@@ -35,24 +35,37 @@ const LoginPage = () => {
     try {
       await login(data.email, data.password);
       // Navigation happens in useEffect when user state changes
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      setLoginError(error instanceof Error ? error.message : "Erro ao fazer login. Verifique suas credenciais.");
+      // Identify common Supabase auth errors and provide friendly messages
+      if (error.message.includes('Invalid login credentials')) {
+        setLoginError("Email ou senha incorretos. Verifique suas credenciais.");
+      } else if (error.message.includes('Email not confirmed')) {
+        setLoginError("Por favor, confirme seu email antes de fazer login.");
+      } else {
+        setLoginError(error instanceof Error ? error.message : "Erro ao fazer login. Verifique suas credenciais.");
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleRegisterSubmit = async (data: { email: string; password: string }) => {
+  const handleRegisterSubmit = async (data: { email: string; password: string; confirmPassword: string }) => {
     setIsSubmitting(true);
     setRegisterError(null);
     
     try {
       await registerUser(data.email, data.password);
-      // Navigation happens in useEffect when user state changes
-    } catch (error) {
+      // After registration, show a message but don't redirect yet since user needs to verify email
+      setActiveTab("login");
+    } catch (error: any) {
       console.error('Registration error:', error);
-      setRegisterError(error instanceof Error ? error.message : "Erro ao criar conta. Tente novamente mais tarde.");
+      // Identify common Supabase auth errors and provide friendly messages
+      if (error.message.includes('already registered')) {
+        setRegisterError("Este email já está registrado. Tente fazer login.");
+      } else {
+        setRegisterError(error instanceof Error ? error.message : "Erro ao criar conta. Tente novamente mais tarde.");
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -2,26 +2,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthContextType, User } from '../types';
 import { useToast } from "@/hooks/use-toast";
-
-// Simulação de autenticação (em um projeto real, isso seria conectado ao backend)
-const mockUsers = [
-  {
-    id: '1',
-    email: 'demo@contentreview.ai',
-    password: 'password123',
-    plan: 'free' as const,
-    usageCount: 45,
-    usageLimit: 100,
-  },
-  {
-    id: '2',
-    email: 'pro@contentreview.ai',
-    password: 'password123',
-    plan: 'pro' as const,
-    usageCount: 356,
-    usageLimit: 1000,
-  },
-];
+import { supabase } from '@/integrations/supabase/client';
+import { Session } from '@supabase/supabase-js';
 
 const USER_STORAGE_KEY = 'contentReviewUser';
 
@@ -32,64 +14,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
-  // Improved persistence mechanism
-  const saveUserToStorage = (userData: User | null) => {
-    if (userData) {
-      try {
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-        console.log('User saved to localStorage:', userData);
-      } catch (error) {
-        console.error('Error saving user to localStorage:', error);
-      }
-    } else {
-      localStorage.removeItem(USER_STORAGE_KEY);
-      console.log('User removed from localStorage');
-    }
+  // Function to map Supabase user data to our User type
+  const mapSupabaseUserToUser = (supabaseUser: any, userData?: any): User => {
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email,
+      plan: userData?.plan || 'free',
+      usageCount: userData?.usageCount || 0,
+      usageLimit: userData?.usageLimit || 100,
+    };
   };
 
-  const loadUserFromStorage = () => {
-    try {
-      const savedUser = localStorage.getItem(USER_STORAGE_KEY);
-      if (savedUser) {
-        const parsedUser = JSON.parse(savedUser);
-        console.log('User loaded from localStorage:', parsedUser);
-        return parsedUser;
-      }
-    } catch (error) {
-      console.error('Error loading user from localStorage:', error);
-      localStorage.removeItem(USER_STORAGE_KEY);
-    }
-    return null;
-  };
-
+  // Initialize auth state
   useEffect(() => {
-    // Load user from localStorage on initial mount
-    const savedUser = loadUserFromStorage();
-    setUser(savedUser);
-    setIsLoading(false);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state changed:', event, session);
+        if (session?.user) {
+          const mappedUser = mapSupabaseUserToUser(session.user);
+          setUser(mappedUser);
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
+      }
+    );
+    
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        console.log('Existing session found:', session);
+        const mappedUser = mapSupabaseUserToUser(session.user);
+        setUser(mappedUser);
+      } else {
+        console.log('No session found');
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     
     try {
-      // Simular delay de rede
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       if (!email || !password) {
         throw new Error('E-mail e senha são obrigatórios');
       }
       
-      const foundUser = mockUsers.find(
-        u => u.email === email && u.password === password
-      );
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
       
-      if (foundUser) {
-        // Omitir senha do objeto de usuário
-        const { password: _, ...userWithoutPassword } = foundUser;
-        setUser(userWithoutPassword);
-        saveUserToStorage(userWithoutPassword);
-        
+      if (error) {
+        throw error;
+      }
+      
+      if (data.user) {
+        const mappedUser = mapSupabaseUserToUser(data.user);
         toast({
           title: "Login bem-sucedido",
           description: `Bem-vindo de volta, ${email}!`,
@@ -115,35 +103,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      // Simular delay de rede
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       if (!email || !password) {
         throw new Error('E-mail e senha são obrigatórios');
       }
       
-      // Verificar se o e-mail já está em uso
-      if (mockUsers.some(u => u.email === email)) {
-        throw new Error('Este e-mail já está em uso');
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            plan: 'free',
+            usageCount: 0,
+            usageLimit: 100
+          }
+        }
+      });
+      
+      if (error) {
+        throw error;
       }
       
-      // Em um app real, isso seria uma chamada ao backend para criar o usuário
-      const newUser: User = {
-        id: `user_${Date.now()}`,
-        email,
-        plan: 'free',
-        usageCount: 0,
-        usageLimit: 100,
-      };
-      
-      setUser(newUser);
-      saveUserToStorage(newUser);
-      
-      toast({
-        title: "Registro bem-sucedido",
-        description: `Bem-vindo ao ContentReview.AI, ${email}!`,
-        duration: 3000,
-      });
+      if (data.user) {
+        const mappedUser = mapSupabaseUserToUser(data.user, {
+          plan: 'free',
+          usageCount: 0,
+          usageLimit: 100
+        });
+        
+        toast({
+          title: "Registro bem-sucedido",
+          description: `Bem-vindo ao ContentReview.AI, ${email}! Verifique seu email para confirmar sua conta.`,
+          duration: 5000,
+        });
+      } else {
+        throw new Error('Erro ao criar conta');
+      }
     } catch (error) {
       toast({
         title: "Erro ao criar conta",
@@ -157,14 +151,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    saveUserToStorage(null);
-    toast({
-      title: "Logout realizado",
-      description: "Você foi desconectado com sucesso.",
-      duration: 3000,
-    });
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+      toast({
+        title: "Erro ao fazer logout",
+        description: "Não foi possível desconectar. Tente novamente.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
   };
 
   const updateUserUsage = (count: number) => {
@@ -174,7 +177,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         usageCount: count,
       };
       setUser(updatedUser);
-      saveUserToStorage(updatedUser);
     }
   };
 
