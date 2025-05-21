@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
+import LoginBackground from '../components/LoginBackground';
 
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -68,19 +69,21 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen flex flex-col justify-center items-center p-4">
+      <LoginBackground />
+      
+      <div className="w-full max-w-md space-y-8 relative z-10">
         <div className="flex flex-col items-center justify-center space-y-2">
           <Logo size="lg" />
-          <h2 className="text-2xl font-medium text-center text-gray-700">
+          <h2 className="text-2xl font-medium text-center text-gray-800">
             Bem-vindo ao ContentReview.AI
           </h2>
-          <p className="text-sm text-center text-gray-600 max-w-sm">
+          <p className="text-sm text-center text-gray-700 max-w-sm">
             A ferramenta de análise de conteúdo que protege sua presença online.
           </p>
         </div>
 
-        <Card className="w-full">
+        <Card className="w-full bg-white/95 backdrop-blur shadow-xl">
           <CardHeader>
             <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
@@ -88,8 +91,7 @@ const LoginPage = () => {
                 <TabsTrigger value="register">Criar Conta</TabsTrigger>
               </TabsList>
             
-            <CardContent>
-              <TabsContent value="login" className="mt-0">
+              <TabsContent value="login" className="mt-4">
                 <Form {...loginForm}>
                   <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
                     <FormField
@@ -133,7 +135,8 @@ const LoginPage = () => {
                   </p>
                 </div>
               </TabsContent>
-              <TabsContent value="register" className="mt-0">
+              
+              <TabsContent value="register" className="mt-4">
                 <Form {...registerForm}>
                   <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
                     <FormField
@@ -185,7 +188,6 @@ const LoginPage = () => {
                   </form>
                 </Form>
               </TabsContent>
-            </CardContent>
             </Tabs>
           </CardHeader>
           <CardFooter className="flex justify-center">
