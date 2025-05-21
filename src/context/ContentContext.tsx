@@ -47,27 +47,53 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setError(null);
     
     try {
-      // Chamada à API externa real
+      console.log("Enviando requisição para API:", text);
+      
+      // Chamada à API externa com tratamento de timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos de timeout
+      
       const response = await fetch('https://content-scribe-analyzer.up.railway.app/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
+        signal: controller.signal
+      }).catch(err => {
+        console.error("Erro na fetch:", err);
+        throw new Error(`Falha na conexão com a API: ${err.message}`);
       });
       
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || `Erro na requisição: ${response.status}`);
+        console.error("Resposta não-OK da API:", response.status, response.statusText);
+        let errorMessage = `Erro na API (${response.status})`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.message || errorMessage;
+        } catch (e) {
+          // Ignorar erro ao tentar parsear resposta já com erro
+        }
+        
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json();
+      const data = await response.json().catch(err => {
+        console.error("Erro ao parsear JSON da resposta:", err);
+        throw new Error("Formato de resposta inválido");
+      });
       
-      // Construir o objeto de resultado com os dados retornados pela API
+      console.log("Resposta da API:", data);
+      
+      // Implementação de fallback para quando a API falhar
+      // Construir o objeto de resultado com os dados retornados pela API ou dados mockados
       const result: AnalysisResult = {
         id: `analysis_${Date.now()}`,
         text: text.length > 100 ? `${text.substring(0, 100)}...` : text,
-        flagged: data.flagged || false,
-        categories: data.categories || [],
-        insights: data.insights || ['Nenhum problema encontrado no conteúdo.'],
+        flagged: data?.flagged || false,
+        categories: data?.categories || [],
+        insights: data?.insights || ['Nenhum problema encontrado no conteúdo.'],
         timestamp: new Date().toISOString(),
       };
       
@@ -84,17 +110,47 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido ao analisar conteúdo";
+      console.error("Erro capturado no try/catch:", err);
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : "Erro desconhecido ao analisar conteúdo";
+      
       setError(errorMessage);
       
+      // Mostrar mensagem de erro mais detalhada
       toast({
         title: "Erro ao analisar",
-        description: errorMessage,
+        description: `${errorMessage}. Por favor, tente novamente mais tarde ou verifique sua conexão.`,
         variant: "destructive",
       });
       
-      // Em caso de erro na API, podemos implementar um fallback para os dados mockados
-      // ou simplesmente retornar null como estamos fazendo aqui
+      // Implementar um fallback para análise offline em caso de falha persistente na API
+      if (err.name === 'AbortError' || err.message.includes('Failed to fetch')) {
+        toast({
+          title: "Modo offline ativado",
+          description: "Utilizando análise local devido a problemas de conexão.",
+        });
+        
+        // Gerar um resultado simulado para permitir testes mesmo com a API indisponível
+        const fallbackResult: AnalysisResult = {
+          id: `offline_${Date.now()}`,
+          text: text.length > 100 ? `${text.substring(0, 100)}...` : text,
+          flagged: text.includes('horrível') || text.includes('péssimo'),
+          categories: ['Análise Local'],
+          insights: ['Análise realizada em modo offline devido a problemas de conexão.', 
+                     'Recomendamos verificar sua conexão e tentar novamente mais tarde.'],
+          timestamp: new Date().toISOString(),
+        };
+        
+        // Atualizar o histórico de análises com o resultado offline
+        setAnalyses(prev => [fallbackResult, ...prev]);
+        
+        // Atualizar a contagem de uso do usuário (mesmo offline)
+        updateUserUsage(user.usageCount + 1);
+        
+        return fallbackResult;
+      }
+      
       return null;
     } finally {
       setIsAnalyzing(false);

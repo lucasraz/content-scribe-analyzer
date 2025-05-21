@@ -4,15 +4,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader } from 'lucide-react';
+import { Loader, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
 import UsageDisplay from '../components/UsageDisplay';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const DashboardPage: React.FC = () => {
   const [text, setText] = useState('');
   const { user } = useAuth();
-  const { analyzeContent, isAnalyzing, selectedAnalysis, selectAnalysis } = useContent();
+  const { analyzeContent, isAnalyzing, selectedAnalysis, selectAnalysis, error } = useContent();
 
   const handleAnalyze = async () => {
     if (!text.trim()) return;
@@ -74,6 +75,17 @@ const DashboardPage: React.FC = () => {
               </Button>
             </CardFooter>
           </Card>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Problema de conexão</AlertTitle>
+              <AlertDescription>
+                Não foi possível conectar ao serviço de análise. 
+                Por favor, verifique sua conexão e tente novamente.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {selectedAnalysis && (
             <Card className={`shadow-sm border-l-4 ${selectedAnalysis.flagged ? 'border-l-red-500' : 'border-l-green-500'}`}>
