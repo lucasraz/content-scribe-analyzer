@@ -23,6 +23,8 @@ const mockUsers = [
   },
 ];
 
+const USER_STORAGE_KEY = 'contentReviewUser';
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -30,14 +32,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Verificar se existe usuário no localStorage
-    const savedUser = localStorage.getItem('contentReviewUser');
-    
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+  // Improved persistence mechanism
+  const saveUserToStorage = (userData: User | null) => {
+    if (userData) {
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+      console.log('User saved to localStorage:', userData);
+    } else {
+      localStorage.removeItem(USER_STORAGE_KEY);
+      console.log('User removed from localStorage');
     }
-    
+  };
+
+  const loadUserFromStorage = () => {
+    try {
+      const savedUser = localStorage.getItem(USER_STORAGE_KEY);
+      if (savedUser) {
+        const parsedUser = JSON.parse(savedUser);
+        console.log('User loaded from localStorage:', parsedUser);
+        return parsedUser;
+      }
+    } catch (error) {
+      console.error('Error loading user from localStorage:', error);
+      localStorage.removeItem(USER_STORAGE_KEY);
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    // Load user from localStorage on initial mount
+    const savedUser = loadUserFromStorage();
+    setUser(savedUser);
     setIsLoading(false);
   }, []);
 
@@ -56,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Omitir senha do objeto de usuário
         const { password: _, ...userWithoutPassword } = foundUser;
         setUser(userWithoutPassword);
-        localStorage.setItem('contentReviewUser', JSON.stringify(userWithoutPassword));
+        saveUserToStorage(userWithoutPassword);
         
         toast({
           title: "Login bem-sucedido",
@@ -101,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       setUser(newUser);
-      localStorage.setItem('contentReviewUser', JSON.stringify(newUser));
+      saveUserToStorage(newUser);
       
       toast({
         title: "Registro bem-sucedido",
@@ -123,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('contentReviewUser');
+    saveUserToStorage(null);
     toast({
       title: "Logout realizado",
       description: "Você foi desconectado com sucesso.",
@@ -138,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         usageCount: count,
       };
       setUser(updatedUser);
-      localStorage.setItem('contentReviewUser', JSON.stringify(updatedUser));
+      saveUserToStorage(updatedUser);
     }
   };
 

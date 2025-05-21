@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -30,8 +29,15 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const LoginPage = () => {
   const [activeTab, setActiveTab] = useState<string>("login");
-  const { login, register } = useAuth();
+  const { login, register, user } = useAuth();
   const navigate = useNavigate();
+  
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -53,18 +59,20 @@ const LoginPage = () => {
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
       await login(data.email, data.password);
-      navigate('/dashboard');
+      // Navigation happens in useEffect when user state changes
     } catch (error) {
       // Erro é tratado no AuthContext
+      console.error('Login error:', error);
     }
   };
 
   const onRegisterSubmit = async (data: RegisterFormValues) => {
     try {
       await register(data.email, data.password);
-      navigate('/dashboard');
+      // Navigation happens in useEffect when user state changes
     } catch (error) {
       // Erro é tratado no AuthContext
+      console.error('Registration error:', error);
     }
   };
 
