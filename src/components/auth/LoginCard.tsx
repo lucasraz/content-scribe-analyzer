@@ -50,11 +50,6 @@ const LoginCard = ({
               isSubmitting={isSubmitting}
               loginError={loginError}
             />
-            <div className="mt-4">
-              <p className="text-sm text-center text-gray-500">
-                Para testar, use: demo@contentreview.ai / password123
-              </p>
-            </div>
           </TabsContent>
           
           <TabsContent value="register" className="mt-4">
