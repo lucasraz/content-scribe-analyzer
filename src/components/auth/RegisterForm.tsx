@@ -7,6 +7,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 
 const registerSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -22,9 +24,10 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 interface RegisterFormProps {
   onSubmit: (data: RegisterFormValues) => Promise<void>;
   isSubmitting: boolean;
+  registerError?: string | null;
 }
 
-const RegisterForm = ({ onSubmit, isSubmitting }: RegisterFormProps) => {
+const RegisterForm = ({ onSubmit, isSubmitting, registerError }: RegisterFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -37,9 +40,24 @@ const RegisterForm = ({ onSubmit, isSubmitting }: RegisterFormProps) => {
     },
   });
 
+  const handleSubmit = async (data: RegisterFormValues) => {
+    try {
+      await onSubmit(data);
+    } catch (error) {
+      // Error will be handled by parent component
+      console.error("Registration error:", error);
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {registerError && (
+          <Alert variant="destructive" className="mb-4">
+            <ExclamationTriangleIcon className="h-4 w-4 mr-2" />
+            <AlertDescription>{registerError}</AlertDescription>
+          </Alert>
+        )}
         <FormField
           control={form.control}
           name="email"

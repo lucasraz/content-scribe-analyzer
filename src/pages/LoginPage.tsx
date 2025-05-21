@@ -8,9 +8,12 @@ import LoginCard from '../components/auth/LoginCard';
 
 const LoginPage = () => {
   const [activeTab, setActiveTab] = useState<string>("login");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  
   const { login, register: registerUser, user } = useAuth();
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Redirect if user is already logged in
   useEffect(() => {
@@ -19,13 +22,22 @@ const LoginPage = () => {
     }
   }, [user, navigate]);
 
+  // Reset errors when tab changes
+  useEffect(() => {
+    setLoginError(null);
+    setRegisterError(null);
+  }, [activeTab]);
+
   const handleLoginSubmit = async (data: { email: string; password: string }) => {
     setIsSubmitting(true);
+    setLoginError(null);
+    
     try {
       await login(data.email, data.password);
       // Navigation happens in useEffect when user state changes
     } catch (error) {
       console.error('Login error:', error);
+      setLoginError(error instanceof Error ? error.message : "Erro ao fazer login. Verifique suas credenciais.");
     } finally {
       setIsSubmitting(false);
     }
@@ -33,11 +45,14 @@ const LoginPage = () => {
 
   const handleRegisterSubmit = async (data: { email: string; password: string }) => {
     setIsSubmitting(true);
+    setRegisterError(null);
+    
     try {
       await registerUser(data.email, data.password);
       // Navigation happens in useEffect when user state changes
     } catch (error) {
       console.error('Registration error:', error);
+      setRegisterError(error instanceof Error ? error.message : "Erro ao criar conta. Tente novamente mais tarde.");
     } finally {
       setIsSubmitting(false);
     }
@@ -64,6 +79,8 @@ const LoginPage = () => {
           onLoginSubmit={handleLoginSubmit}
           onRegisterSubmit={handleRegisterSubmit}
           isSubmitting={isSubmitting}
+          loginError={loginError}
+          registerError={registerError}
         />
       </div>
     </div>

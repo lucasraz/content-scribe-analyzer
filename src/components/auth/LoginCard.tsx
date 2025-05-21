@@ -22,6 +22,8 @@ interface LoginCardProps {
   onLoginSubmit: (data: LoginFormValues) => Promise<void>;
   onRegisterSubmit: (data: RegisterFormValues) => Promise<void>;
   isSubmitting: boolean;
+  loginError?: string | null;
+  registerError?: string | null;
 }
 
 const LoginCard = ({
@@ -30,6 +32,8 @@ const LoginCard = ({
   onLoginSubmit,
   onRegisterSubmit,
   isSubmitting,
+  loginError,
+  registerError,
 }: LoginCardProps) => {
   return (
     <Card className="w-full bg-white/95 backdrop-blur shadow-xl">
@@ -41,7 +45,11 @@ const LoginCard = ({
           </TabsList>
         
           <TabsContent value="login" className="mt-4">
-            <LoginForm onSubmit={onLoginSubmit} isSubmitting={isSubmitting} />
+            <LoginForm 
+              onSubmit={onLoginSubmit} 
+              isSubmitting={isSubmitting}
+              loginError={loginError}
+            />
             <div className="mt-4">
               <p className="text-sm text-center text-gray-500">
                 Para testar, use: demo@contentreview.ai / password123
@@ -50,7 +58,11 @@ const LoginCard = ({
           </TabsContent>
           
           <TabsContent value="register" className="mt-4">
-            <RegisterForm onSubmit={onRegisterSubmit} isSubmitting={isSubmitting} />
+            <RegisterForm 
+              onSubmit={onRegisterSubmit} 
+              isSubmitting={isSubmitting}
+              registerError={registerError}
+            />
           </TabsContent>
         </Tabs>
       </CardHeader>

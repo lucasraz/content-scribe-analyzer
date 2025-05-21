@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthContextType, User } from '../types';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 // Simulação de autenticação (em um projeto real, isso seria conectado ao backend)
 const mockUsers = [
@@ -35,8 +35,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Improved persistence mechanism
   const saveUserToStorage = (userData: User | null) => {
     if (userData) {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-      console.log('User saved to localStorage:', userData);
+      try {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+        console.log('User saved to localStorage:', userData);
+      } catch (error) {
+        console.error('Error saving user to localStorage:', error);
+      }
     } else {
       localStorage.removeItem(USER_STORAGE_KEY);
       console.log('User removed from localStorage');
@@ -71,6 +75,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Simular delay de rede
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (!email || !password) {
+        throw new Error('E-mail e senha são obrigatórios');
+      }
       
       const foundUser = mockUsers.find(
         u => u.email === email && u.password === password
@@ -109,6 +117,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Simular delay de rede
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (!email || !password) {
+        throw new Error('E-mail e senha são obrigatórios');
+      }
       
       // Verificar se o e-mail já está em uso
       if (mockUsers.some(u => u.email === email)) {
