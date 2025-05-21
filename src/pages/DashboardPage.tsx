@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader, AlertTriangle } from 'lucide-react';
+import { Loader, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
 import UsageDisplay from '../components/UsageDisplay';
@@ -13,7 +13,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 const DashboardPage: React.FC = () => {
   const [text, setText] = useState('');
   const { user } = useAuth();
-  const { analyzeContent, isAnalyzing, selectedAnalysis, selectAnalysis, error } = useContent();
+  const { analyzeContent, isAnalyzing, selectedAnalysis, selectAnalysis, error, retryCount } = useContent();
 
   const handleAnalyze = async () => {
     if (!text.trim()) return;
@@ -68,8 +68,17 @@ const DashboardPage: React.FC = () => {
               >
                 {isAnalyzing ? (
                   <>
-                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                    Analisando...
+                    {retryCount > 0 ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Reconectando ({retryCount}/3)...
+                      </>
+                    ) : (
+                      <>
+                        <Loader className="mr-2 h-4 w-4 animate-spin" />
+                        Analisando...
+                      </>
+                    )}
                   </>
                 ) : "Analisar Conteúdo"}
               </Button>
@@ -82,7 +91,7 @@ const DashboardPage: React.FC = () => {
               <AlertTitle>Problema de conexão</AlertTitle>
               <AlertDescription>
                 Não foi possível conectar ao serviço de análise. 
-                Por favor, verifique sua conexão e tente novamente.
+                O sistema está utilizando análise local para continuar funcionando.
               </AlertDescription>
             </Alert>
           )}
@@ -98,6 +107,11 @@ const DashboardPage: React.FC = () => {
                 </div>
                 <CardDescription>
                   {new Date(selectedAnalysis.timestamp).toLocaleString('pt-BR')}
+                  {selectedAnalysis.id.startsWith('offline_') && (
+                    <span className="ml-2 text-amber-600 text-xs">
+                      (análise offline)
+                    </span>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

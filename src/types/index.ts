@@ -32,4 +32,5 @@ export interface ContentContextType {
   analyzeContent: (text: string) => Promise<AnalysisResult | null>;
   selectedAnalysis: AnalysisResult | null;
   selectAnalysis: (analysis: AnalysisResult | null) => void;
+  retryCount: number;
 }

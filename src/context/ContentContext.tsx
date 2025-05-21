@@ -11,11 +11,16 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisResult | null>(null);
+  const [retryCount, setRetryCount] = useState<number>(0);
+  const [lastAnalysisTime, setLastAnalysisTime] = useState<number | null>(null);
   
   const { user, updateUserUsage } = useAuth();
   const { toast } = useToast();
 
-  const analyzeContent = async (text: string): Promise<AnalysisResult | null> => {
+  // Função para adicionar um pequeno delay (útil para retry)
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const analyzeContent = async (text: string, retries = 0): Promise<AnalysisResult | null> => {
     if (!text.trim()) {
       toast({
         title: "Erro de validação",
@@ -43,21 +48,38 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return null;
     }
     
+    // Evitar requisições muito próximas (proteção contra spam)
+    const now = Date.now();
+    if (lastAnalysisTime && now - lastAnalysisTime < 1000) {
+      toast({
+        title: "Aguarde um momento",
+        description: "Por favor, aguarde alguns segundos entre as análises.",
+      });
+      return null;
+    }
+    
     setIsAnalyzing(true);
     setError(null);
+    setRetryCount(retries);
     
     try {
       console.log("Enviando requisição para API:", text);
       
       // Chamada à API externa com tratamento de timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos de timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 segundos de timeout (menor que antes)
       
       const response = await fetch('https://content-scribe-analyzer.up.railway.app/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ text }),
-        signal: controller.signal
+        signal: controller.signal,
+        // Adiciona opções para evitar problemas de CORS e cache
+        mode: 'cors',
+        cache: 'no-cache'
       }).catch(err => {
         console.error("Erro na fetch:", err);
         throw new Error(`Falha na conexão com a API: ${err.message}`);
@@ -85,9 +107,9 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
       
       console.log("Resposta da API:", data);
+      setLastAnalysisTime(now);
       
-      // Implementação de fallback para quando a API falhar
-      // Construir o objeto de resultado com os dados retornados pela API ou dados mockados
+      // Construir o objeto de resultado com os dados retornados pela API
       const result: AnalysisResult = {
         id: `analysis_${Date.now()}`,
         text: text.length > 100 ? `${text.substring(0, 100)}...` : text,
@@ -115,6 +137,24 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ? err.message 
         : "Erro desconhecido ao analisar conteúdo";
       
+      // Implementa lógica de retry com backoff exponencial
+      if (retries < 2 && (err.name === 'AbortError' || err.message.includes('Failed to fetch'))) {
+        const nextRetry = retries + 1;
+        setRetryCount(nextRetry);
+        
+        toast({
+          title: `Tentativa ${nextRetry}/3`,
+          description: "Serviço temporariamente indisponível. Tentando reconectar...",
+        });
+        
+        // Espera um tempo crescente entre as retentativas
+        const retryDelay = Math.pow(2, retries) * 1000; // 1s, 2s, 4s...
+        await delay(retryDelay);
+        
+        // Tenta novamente
+        return analyzeContent(text, nextRetry);
+      }
+      
       setError(errorMessage);
       
       // Mostrar mensagem de erro mais detalhada
@@ -135,10 +175,13 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const fallbackResult: AnalysisResult = {
           id: `offline_${Date.now()}`,
           text: text.length > 100 ? `${text.substring(0, 100)}...` : text,
-          flagged: text.includes('horrível') || text.includes('péssimo'),
+          flagged: text.includes('horrível') || text.includes('péssimo') || text.includes('ruim'),
           categories: ['Análise Local'],
-          insights: ['Análise realizada em modo offline devido a problemas de conexão.', 
-                     'Recomendamos verificar sua conexão e tentar novamente mais tarde.'],
+          insights: [
+            'Análise realizada em modo offline devido a problemas de conexão.',
+            'Recomendamos verificar sua conexão e tentar novamente mais tarde.',
+            'Esta análise básica identifica apenas palavras-chave negativas óbvias.'
+          ],
           timestamp: new Date().toISOString(),
         };
         
@@ -169,7 +212,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         error, 
         analyzeContent,
         selectedAnalysis,
-        selectAnalysis
+        selectAnalysis,
+        retryCount
       }}
     >
       {children}
