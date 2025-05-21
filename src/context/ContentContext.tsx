@@ -2,58 +2,9 @@
 import React, { createContext, useContext, useState } from 'react';
 import { ContentContextType, AnalysisResult } from '../types';
 import { useAuth } from './AuthContext';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
-
-// Mock de resultados de análise para demonstração
-const mockAnalysisResponse = (text: string): AnalysisResult => {
-  // Em um app real, isso viria da API externa
-  const isFlagged = text.toLowerCase().includes('spam') || 
-                    text.toLowerCase().includes('hack') || 
-                    Math.random() > 0.7;
-  
-  const possibleCategories = [
-    'Conteúdo Comercial', 
-    'Potencial Spam', 
-    'Linguagem Imprópria', 
-    'Conteúdo Sensível', 
-    'Potencial Phishing',
-    'Discurso de Ódio',
-    'Desinformação'
-  ];
-  
-  const possibleInsights = [
-    'O texto contém elementos comumente encontrados em mensagens comerciais não solicitadas.',
-    'Foram detectados padrões linguísticos associados a tentativas de engenharia social.',
-    'O conteúdo pode violar políticas de uso de várias plataformas.',
-    'Recomenda-se revisão manual devido à presença de elementos de risco médio.',
-    'O texto apresenta características de comunicação manipulativa.',
-    'Detectamos uso excessivo de urgência e pressão psicológica no conteúdo.',
-    'O texto possui similaridade com padrões de phishing conhecidos.'
-  ];
-  
-  // Selecionar aleatoriamente de 0 a 3 categorias
-  const selectedCategories = isFlagged 
-    ? possibleCategories
-        .sort(() => 0.5 - Math.random())
-        .slice(0, Math.floor(Math.random() * 3) + 1) 
-    : [];
-  
-  // Selecionar aleatoriamente de 1 a 3 insights
-  const selectedInsights = possibleInsights
-    .sort(() => 0.5 - Math.random())
-    .slice(0, Math.floor(Math.random() * 3) + (isFlagged ? 1 : 0));
-  
-  return {
-    id: `analysis_${Date.now()}`,
-    text: text.length > 100 ? `${text.substring(0, 100)}...` : text,
-    flagged: isFlagged,
-    categories: selectedCategories,
-    insights: isFlagged ? selectedInsights : ['Nenhum problema encontrado no conteúdo.'],
-    timestamp: new Date().toISOString(),
-  };
-};
 
 export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
@@ -96,21 +47,29 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setError(null);
     
     try {
-      // Em um aplicativo real, isso seria uma chamada à API externa
-      // const response = await fetch('https://seu-projeto.up.railway.app/analyze', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ text }),
-      // });
+      // Chamada à API externa real
+      const response = await fetch('https://content-scribe-analyzer.up.railway.app/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
       
-      // if (!response.ok) throw new Error('Falha ao analisar o conteúdo');
-      // const data = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || `Erro na requisição: ${response.status}`);
+      }
       
-      // Simulando delay de rede
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const data = await response.json();
       
-      // Usando dados simulados para demonstração
-      const result = mockAnalysisResponse(text);
+      // Construir o objeto de resultado com os dados retornados pela API
+      const result: AnalysisResult = {
+        id: `analysis_${Date.now()}`,
+        text: text.length > 100 ? `${text.substring(0, 100)}...` : text,
+        flagged: data.flagged || false,
+        categories: data.categories || [],
+        insights: data.insights || ['Nenhum problema encontrado no conteúdo.'],
+        timestamp: new Date().toISOString(),
+      };
       
       // Atualizar o histórico de análises
       setAnalyses(prev => [result, ...prev]);
@@ -134,6 +93,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         variant: "destructive",
       });
       
+      // Em caso de erro na API, podemos implementar um fallback para os dados mockados
+      // ou simplesmente retornar null como estamos fazendo aqui
       return null;
     } finally {
       setIsAnalyzing(false);
