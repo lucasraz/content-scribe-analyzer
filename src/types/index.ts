@@ -14,6 +14,7 @@ export interface AnalysisResult {
   categories: string[];
   insights: string[];
   timestamp: string;
+  suggestions?: string[]; // New field for text improvement suggestions
 }
 
 export interface AuthContextType {
@@ -33,4 +34,5 @@ export interface ContentContextType {
   selectedAnalysis: AnalysisResult | null;
   selectAnalysis: (analysis: AnalysisResult | null) => void;
   retryCount: number;
+  generateReport: (analysis: AnalysisResult | null) => string; // New function to generate reports
 }

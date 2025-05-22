@@ -49,7 +49,12 @@ const PricingCard: React.FC<PricingCardProps> = ({
         {features.map((feature, index) => (
           <li key={index} className="flex items-center">
             <Check className="mr-2 h-4 w-4 text-green-500" />
-            <span className="text-sm">{feature}</span>
+            <span className={`text-sm ${
+              // Highlight the "Geração de relatórios" feature in the Pro plan
+              plan === "pro" && feature.includes("relatórios") 
+                ? "font-medium text-brand-primary" 
+                : ""
+            }`}>{feature}</span>
           </li>
         ))}
       </ul>

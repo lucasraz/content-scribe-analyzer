@@ -71,7 +71,8 @@ const PlansPage: React.FC = () => {
             "1000 análises por mês",
             "Todas as funcionalidades do plano gratuito",
             "Prioridade no suporte",
-            "Exportação de relatórios",
+            "Geração de relatórios completos",
+            "Sugestões avançadas de melhoria de texto",
             "API de integração"
           ]}
           isPrimary
@@ -102,6 +103,13 @@ const PlansPage: React.FC = () => {
             <h3 className="font-medium">Posso trocar de plano a qualquer momento?</h3>
             <p className="text-gray-600 mt-1">
               Sim, você pode fazer upgrade ou downgrade do seu plano quando quiser. As alterações são aplicadas imediatamente.
+            </p>
+          </div>
+          
+          <div>
+            <h3 className="font-medium">O que inclui a geração de relatórios?</h3>
+            <p className="text-gray-600 mt-1">
+              A geração de relatórios, exclusiva do plano Pro, permite exportar uma análise completa do seu conteúdo com todas as sugestões de melhoria em um formato facilmente compartilhável.
             </p>
           </div>
           

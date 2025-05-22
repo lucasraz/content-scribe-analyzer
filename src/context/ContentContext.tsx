@@ -117,6 +117,12 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         categories: data?.categories || [],
         insights: data?.insights || ['Nenhum problema encontrado no conteúdo.'],
         timestamp: new Date().toISOString(),
+        // Adicionar sugestões de melhoria (simuladas para o modo offline)
+        suggestions: data?.suggestions || [
+          'Considere utilizar uma linguagem mais objetiva.',
+          'Evite repetições de palavras para melhorar a fluidez do texto.',
+          'Adicione mais detalhes sobre os pontos principais.'
+        ],
       };
       
       // Atualizar o histórico de análises
@@ -183,6 +189,11 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
             'Esta análise básica identifica apenas palavras-chave negativas óbvias.'
           ],
           timestamp: new Date().toISOString(),
+          // Adicionar sugestões simuladas para o modo offline
+          suggestions: [
+            'Sugestões não disponíveis no modo offline.',
+            'Conecte-se à internet para obter sugestões personalizadas.'
+          ],
         };
         
         // Atualizar o histórico de análises com o resultado offline
@@ -200,6 +211,36 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const generateReport = (analysis: AnalysisResult | null): string => {
+    if (!analysis) return "";
+    
+    const reportDate = new Date().toLocaleDateString('pt-BR');
+    const reportTime = new Date().toLocaleTimeString('pt-BR');
+    
+    return `
+RELATÓRIO DE ANÁLISE DE CONTEÚDO
+Data: ${reportDate} às ${reportTime}
+
+RESUMO:
+${analysis.flagged ? '⚠️ CONTEÚDO COM ALERTA' : '✅ CONTEÚDO SEGURO'}
+
+TEXTO ANALISADO:
+"${analysis.text}"
+
+CATEGORIAS IDENTIFICADAS:
+${analysis.categories.length > 0 ? analysis.categories.join(', ') : 'Nenhuma categoria específica identificada'}
+
+INSIGHTS:
+${analysis.insights.map(insight => `• ${insight}`).join('\n')}
+
+SUGESTÕES DE MELHORIA:
+${analysis.suggestions?.map(suggestion => `• ${suggestion}`).join('\n') || 'Nenhuma sugestão disponível'}
+
+--
+Relatório gerado por ContentReview.AI
+`;
+  };
+
   const selectAnalysis = (analysis: AnalysisResult | null) => {
     setSelectedAnalysis(analysis);
   };
@@ -213,7 +254,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         analyzeContent,
         selectedAnalysis,
         selectAnalysis,
-        retryCount
+        retryCount,
+        generateReport
       }}
     >
       {children}
